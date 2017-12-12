@@ -1,9 +1,9 @@
 
-:- use_module(library(clpfd), [transpose/2]).
+:- use_module(library(clpfd)).
 
 %% setup
   crossword([
-    [_,_,_,_],
+    [_,_,_,8],
     [8,8,_,8],
     [8,8,_,8],
     [_,_,_,_]
@@ -32,18 +32,36 @@
     transpose(Crossword, Cols),
     append(Crossword, Cols, AllSlots),
     slots(AllSlots, Slots),
-    report(Slots, 'Slots'),
     solve(Words, Slots),
     report(Slots, 'Matched Words'),
     report(Crossword, 'Crossword').
 
 %% slots(AllSlots, Slots) - true when all valid slots are added to the words list
   slots(AllSlots, Slots) :-
-    exclude(zeros, AllSlots, Slots).
+    slot_groups(AllSlots, [], RandomSlots),
+    sort(RandomSlots, Slots).
 
-%% zeros(Slot) - true when the slot doesn't contain 0s
-  zeros(Slot) :-
-    not(member([1,1,1,1], [Slot])).
+  slot_groups([], Acc, Acc).
+  slot_groups([H|T], Acc, Slots) :-
+    slot_group(H, Groups),
+    include(emptySlot(), Groups, EmptySlots),
+    append(Acc, EmptySlots, NewAcc),
+    slot_groups(T, NewAcc, Slots).
+
+%% slot_group([_,_,8,_,8,_], Groups).
+  slot_group(Slots, Groups) :-
+    foldl(with_vars(), Slots, Pairs, _, _),
+    keysort(Pairs, Sorted),
+    group_pairs_by_key(Sorted, KeyGroups),
+    pairs_values(KeyGroups, Groups).
+
+  with_vars(L, R-I-L, I0, I) :-
+    ( var(L) -> ( var(I0) -> R #= I, I0 #= I; R #= I ) ; R #= I, 0 #= I ).
+
+%% emptySlot(Slot) -
+  emptySlot([H|T]) :-
+    var(H),
+    not(length(T, 0)).
 
 %% solve(Words, Crossword) - true all a word fits an all the slots
   solve(_, []).

@@ -1,5 +1,6 @@
 
 :- use_module(library(clpfd)).
+:- use_module(library(pio)).
 
 %% setup
   crossword([
@@ -7,12 +8,6 @@
     [8,8,_,8],
     [8,8,_,8],
     [_,_,_,_]
-  ]).
-
-  words([
-    'hurt',
-    'rent',
-    'auth'
   ]).
 
 %% report(Content, Title) :-
@@ -27,12 +22,11 @@
 
 %% main function
   solve(Crossword) :-
-    words(Words),
     crossword(Crossword),
     transpose(Crossword, Cols),
     append(Crossword, Cols, AllSlots),
     slots(AllSlots, Slots),
-    solve(Words, Slots),
+    fillSlots(Slots),
     report(Slots, 'Matched Words'),
     report(Crossword, 'Crossword').
 
@@ -63,11 +57,13 @@
     var(H),
     not(length(T, 0)).
 
-%% solve(Words, Crossword) - true all a word fits an all the slots
-  solve(_, []).
-  solve(Words, [Slot|Slots]) :-
+%% fillSlots(Slots) - true all a word fits an all the slots
+  fillSlots([]).
+  fillSlots([Slot|Slots]) :-
+    length(Slot, Len),
+    readWords(Len, Words),
     solveWords(Words, Slot),
-    solve(Words, Slots).
+    fillSlots(Slots).
 
 %% solveWords(Words, Slot) - true when word fits the slot
   solveWords([Word|_], Slot) :-
@@ -75,3 +71,26 @@
     member(Codes, [Slot]).
   solveWords([_|Words], Slot) :-
     solveWords(Words, Slot).
+
+
+%% readWords(Filename, Strings) -
+  readWords(Num, Strings) :-
+    swritef(Filename, 'dictionary/words/%w.txt', [Num]),
+    phrase_from_file(lines(Lines), Filename),
+    convert(Lines, Strings).
+
+    lines([]) --> call(eos), !.
+    lines([H|T]) --> line(H), lines(T).
+
+    eos([], []).
+
+    line([]) --> ("\n"; call(eos)), !.
+    line([H|T]) --> [H], line(T).
+
+    convert(Lines, Strings) :-
+      convert(Lines, [], Strings).
+
+    convert([], Acc, Acc).
+    convert([H|T], Acc, Strings) :-
+      string_codes(String, H),
+      convert(T, [String|Acc], Strings).
